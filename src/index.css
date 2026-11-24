@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Design tokens - soft grey "glass" dashboard (light) / charcoal (dark)
+   ------------------------------------------------------------------ */
+:root {
+  --canvas: #e6e8ec;
+  --canvas-2: #dfe5ee;
+  --surface: rgb(255 255 255 / 0.55);
+  --surface-strong: rgb(255 255 255 / 0.85);
+  --surface-solid: #f4f5f7;
+  --line: rgb(17 19 22 / 0.07);
+  --ink: #15171a;
+  --muted: #6b717b;
+  --primary: #111214;
+  --primary-ink: #ffffff;
+  --accent: #eef3c2;       /* pale lime icon circles */
+  --accent-ink: #4b5320;
+  --sky: #4ea8f7;
+  --lime: #d6ea4c;
+  --danger: #e5484d;
+  --warning: #e8a23a;
+  --success: #2fa36b;
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.12);
+}
+
+.dark {
+  --canvas: #0f1114;
+  --canvas-2: #141a22;
+  --surface: rgb(255 255 255 / 0.045);
+  --surface-strong: rgb(255 255 255 / 0.08);
+  --surface-solid: #1a1d22;
+  --line: rgb(255 255 255 / 0.08);
+  --ink: #eceef1;
+  --muted: #9aa1ab;
+  --primary: #f4f5f7;
+  --primary-ink: #111214;
+  --accent: #3a3f22;
+  --accent-ink: #e3ef9b;
+  --sky: #5fb3ff;
+  --lime: #d6ea4c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-solid: var(--surface-solid);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-sky: var(--sky);
+  --color-lime: var(--lime);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --shadow-soft: var(--shadow);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  background: var(--canvas-2);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background-color: var(--canvas-2);
+  background-image: linear-gradient(180deg, var(--canvas) 0%, var(--canvas-2) 100vh);
+  background-repeat: no-repeat;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  /* Glass card used across the app */
+  .card {
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1.5rem;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Inputs share one look */
+  .field {
+    width: 100%;
+    border-radius: 0.9rem;
+    border: 1px solid var(--line);
+    background-color: var(--surface-strong);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.95rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field:focus {
+    border-color: var(--sky);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 25%, transparent);
+  }
+  .field::placeholder {
+    color: var(--muted);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+}
+
+/* Safe area for the mobile bottom navigation */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+/* Thin scrollbars */
+.scroll-thin::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------------
+   Receipt printing: the receipt is cloned into #print-root and only
+   that element is printed.
+   ------------------------------------------------------------------ */
+#print-root {
+  display: none;
+}
+@media print {
+  body.printing-receipt > *:not(#print-root) {
+    display: none !important;
+  }
+  body.printing-receipt #print-root {
+    display: block;
+  }
+  body.printing-receipt {
+    background: #fff !important;
+  }
+  body.printing-receipt #print-root .print-area {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}
