@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { catalogApi, ordersApi, paymentsApi } from '../api'
-import { OverdueBadge, PaymentBadge, ServiceTypeBadge, StatusBadge } from '../components/orders/badges'
+import { FreeBadge, OverdueBadge, PaymentBadge, ServiceTypeBadge, StatusBadge } from '../components/orders/badges'
 import ReceiptModal from '../components/orders/ReceiptModal'
 import RecordPaymentModal from '../components/orders/RecordPaymentModal'
 import WhatsAppModal from '../components/orders/WhatsAppModal'
@@ -72,7 +72,8 @@ function EditOrderModal({ order, open, onClose }) {
           quantity: i.quantity,
           condition_notes: i.condition_notes,
           unit_price: Number(i.unit_price),
-          original_type: i.service_type,
+          custom_price: i.service_type === 'CUSTOM' ? String(Number(i.unit_price)) : '',
+          is_free: i.is_free,
         })),
       )
     }
@@ -87,7 +88,13 @@ function EditOrderModal({ order, open, onClose }) {
         items.length !== order.items.length ||
         items.some((i) => {
           const o = order.items.find((x) => x.id === i.id)
-          return !o || o.quantity !== i.quantity || o.service_type !== i.service_type
+          return (
+            !o ||
+            o.quantity !== i.quantity ||
+            o.service_type !== i.service_type ||
+            o.is_free !== i.is_free ||
+            (i.service_type === 'CUSTOM' && Number(o.unit_price) !== Number(i.custom_price))
+          )
         })
       if (editableItems && itemsChanged) {
         payload.items = items.map((i) => ({
@@ -95,7 +102,9 @@ function EditOrderModal({ order, open, onClose }) {
           service_item: i.service_item,
           service_type: i.service_type,
           quantity: i.quantity,
+          is_free: Boolean(i.is_free),
           condition_notes: i.condition_notes,
+          ...(i.service_type === 'CUSTOM' ? { custom_price: i.custom_price } : {}),
         }))
       } else {
         payload.item_notes = items.filter((i) => i.id).map((i) => ({ id: i.id, condition_notes: i.condition_notes || '' }))
@@ -111,7 +120,7 @@ function EditOrderModal({ order, open, onClose }) {
     if (!found) return
     setItems((cur) => [
       ...cur,
-      { service_item: found.id, name: found.name, service_type: 'NORMAL', quantity: 1, condition_notes: '', unit_price: Number(found.normal_price), normal: Number(found.normal_price), express: Number(found.express_price) },
+      { service_item: found.id, name: found.name, service_type: 'NORMAL', quantity: 1, condition_notes: '', unit_price: Number(found.normal_price), custom_price: '', is_free: false },
     ])
     setAddId('')
   }
@@ -125,7 +134,7 @@ function EditOrderModal({ order, open, onClose }) {
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button loading={mutation.isPending} disabled={!items.length} onClick={() => mutation.mutate(undefined, { onSuccess: onClose })}>{t('common.save')}</Button>
+          <Button loading={mutation.isPending} disabled={!items.length || items.some((i) => i.service_type === 'CUSTOM' && i.custom_price === '')} onClick={() => mutation.mutate(undefined, { onSuccess: onClose })}>{t('common.save')}</Button>
         </>
       }
     >
@@ -149,6 +158,7 @@ function EditOrderModal({ order, open, onClose }) {
                       <Select value={item.service_type} onChange={(e) => setItem(idx, { service_type: e.target.value })} className="w-32">
                         <option value="NORMAL">{t('serviceType.NORMAL')}</option>
                         <option value="EXPRESS">{t('serviceType.EXPRESS')}</option>
+                        <option value="CUSTOM">{t('serviceType.CUSTOM')}</option>
                       </Select>
                       <button type="button" className="grid size-9 place-items-center rounded-full border border-line" onClick={() => setItem(idx, { quantity: Math.max(1, item.quantity - 1) })}><Minus className="size-4" /></button>
                       <span className="tabular w-8 text-center font-semibold">{item.quantity}</span>
@@ -156,9 +166,20 @@ function EditOrderModal({ order, open, onClose }) {
                       <button type="button" className="grid size-9 place-items-center rounded-full text-danger hover:bg-danger/10" onClick={() => setItems((cur) => cur.filter((_, n) => n !== idx))} aria-label={t('common.remove')}><Trash2 className="size-4" /></button>
                     </div>
                   ) : (
-                    <span className="text-sm text-muted">{item.quantity} × {f.money(item.unit_price)}</span>
+                    <span className="text-sm text-muted">{item.quantity} × {f.money(item.unit_price)}{item.is_free ? ` · ${t('orders.free')}` : ''}</span>
                   )}
                 </div>
+                {editableItems ? (
+                  <div className="mt-2 flex flex-wrap items-end gap-3">
+                    {item.service_type === 'CUSTOM' ? (
+                      <Input className="w-full sm:w-48" label={t('newOrder.customPrice')} type="number" inputMode="decimal" min="0" step="any" value={item.custom_price} onChange={(e) => setItem(idx, { custom_price: e.target.value })} />
+                    ) : null}
+                    <label className={cn('flex cursor-pointer select-none items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold', item.is_free ? 'border-success bg-success/12 text-success' : 'border-line bg-surface')}>
+                      <input type="checkbox" className="size-4 accent-[var(--success)]" checked={Boolean(item.is_free)} onChange={(e) => setItem(idx, { is_free: e.target.checked })} />
+                      {t('newOrder.freeOfCharge')}
+                    </label>
+                  </div>
+                ) : null}
                 <Textarea className="mt-2" rows={1} placeholder={t('newOrder.conditionPlaceholder')} value={item.condition_notes || ''} onChange={(e) => setItem(idx, { condition_notes: e.target.value })} />
               </div>
             ))}
@@ -326,12 +347,20 @@ export default function OrderDetailPage() {
                     <p className="font-semibold">{item.item_name_snapshot}</p>
                     <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
                       {item.category_name_snapshot} <ServiceTypeBadge type={item.service_type} />
+                      {item.is_free ? <FreeBadge /> : null}
                     </p>
                     {item.condition_notes ? <p className="mt-1.5 rounded-xl bg-warning/10 px-2.5 py-1.5 text-xs">{item.condition_notes}</p> : null}
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="tabular text-xs text-muted">{item.quantity} × {f.money(item.unit_price)}</p>
-                    <p className="tabular font-bold">{f.money(item.subtotal)}</p>
+                    {item.is_free ? (
+                      <p className="font-bold text-success">
+                        <span className="tabular mr-1.5 text-xs font-medium text-muted line-through">{f.money(Number(item.unit_price) * item.quantity)}</span>
+                        {t('orders.free')}
+                      </p>
+                    ) : (
+                      <p className="tabular font-bold">{f.money(item.subtotal)}</p>
+                    )}
                   </div>
                 </div>
               ))}

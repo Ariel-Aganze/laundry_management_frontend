@@ -82,7 +82,9 @@ function Services({ params }) {
   const c = useChartColors()
   const { data, isLoading } = useQuery({ queryKey: ['analytics', 'services', params, 15], queryFn: () => reportsApi.services({ ...params, limit: 15 }) })
   if (isLoading) return <PageLoader />
-  const [normal, express] = ['NORMAL', 'EXPRESS'].map((k) => data.service_types.find((s) => s.service_type === k))
+  const TYPES = ['NORMAL', 'EXPRESS', 'CUSTOM']
+  const rowsByType = TYPES.map((k) => data.service_types.find((s) => s.service_type === k) || { service_type: k, quantity: 0, orders: 0, value: 0 })
+  const totalQty = rowsByType.reduce((sum, r) => sum + r.quantity, 0)
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-2">
@@ -91,15 +93,18 @@ function Services({ params }) {
       </Card>
       <Card>
         <CardHeader title={t('dashboard.normalVsExpress')} />
-        <Legend items={[{ label: t('serviceType.NORMAL'), color: c.series[0], value: normal.quantity }, { label: t('serviceType.EXPRESS'), color: c.series[1], value: express.quantity }]} />
-        <ShareDonut data={[{ name: t('serviceType.NORMAL'), value: normal.quantity }, { name: t('serviceType.EXPRESS'), value: express.quantity }]} centerValue={normal.quantity + express.quantity} centerLabel={t('dashboard.itemsProcessed')} />
+        <Legend items={rowsByType.map((r, i) => ({ label: t(`serviceType.${r.service_type}`), color: c.series[i], value: r.quantity }))} />
+        <ShareDonut data={rowsByType.map((r) => ({ name: t(`serviceType.${r.service_type}`), value: r.quantity }))} centerValue={totalQty} centerLabel={t('dashboard.itemsProcessed')} />
         <Table
           head={['', t('nav.orders'), t('analytics.value')]}
-          rows={[
-            [t('serviceType.NORMAL'), normal.orders, f.money(normal.value)],
-            [t('serviceType.EXPRESS'), express.orders, f.money(express.value)],
-          ]}
+          rows={rowsByType.map((r) => [t(`serviceType.${r.service_type}`), r.orders, f.money(r.value)])}
         />
+        {data.free_items?.quantity ? (
+          <p className="mt-3 rounded-xl bg-success/10 p-2.5 text-xs">
+            <span className="font-semibold text-success">{t('analytics.freeItems')}</span>{' '}
+            {t('analytics.freeItemsHint', { count: data.free_items.quantity, amount: f.money(data.free_items.value_given) })}
+          </p>
+        ) : null}
       </Card>
       <Card className="lg:col-span-2">
         <CardHeader title={t('analytics.topItems')} />

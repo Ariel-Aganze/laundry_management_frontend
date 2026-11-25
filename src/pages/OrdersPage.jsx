@@ -101,6 +101,7 @@ export default function OrdersPage() {
                 <option value="">{t('common.all')}</option>
                 <option value="NORMAL">{t('serviceType.NORMAL')}</option>
                 <option value="EXPRESS">{t('serviceType.EXPRESS')}</option>
+                <option value="CUSTOM">{t('serviceType.CUSTOM')}</option>
               </Select>
               <Select label={t('orders.balanceFilter')} value={filters.has_balance} onChange={(e) => update({ has_balance: e.target.value })}>
                 <option value="">{t('common.all')}</option>

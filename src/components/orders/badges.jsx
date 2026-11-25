@@ -25,7 +25,13 @@ export function PaymentBadge({ status }) {
 
 export function ServiceTypeBadge({ type }) {
   const { t } = useI18n()
-  return <Badge tone={type === 'EXPRESS' ? 'dark' : 'neutral'}>{t(`serviceType.${type}`)}</Badge>
+  const tone = { EXPRESS: 'dark', CUSTOM: 'sky' }[type] || 'neutral'
+  return <Badge tone={tone}>{t(`serviceType.${type}`)}</Badge>
+}
+
+export function FreeBadge() {
+  const { t } = useI18n()
+  return <Badge tone="success">{t('orders.free')}</Badge>
 }
 
 export function OverdueBadge() {

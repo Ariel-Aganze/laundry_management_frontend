@@ -78,7 +78,11 @@ export function ReceiptPaper({ data, lang, paper, logoUrl }) {
           <p className="font-bold">
             {item.item} - {item.category}
           </p>
-          <Row left={`${item.quantity} x ${money(item.unit_price)} (${rt(lang, `serviceType.${item.service_type}`)})`} right={money(item.subtotal)} />
+          <Row
+            left={`${item.quantity} x ${money(item.unit_price)} (${rt(lang, `serviceType.${item.service_type}`)})`}
+            right={item.is_free ? L('free') : money(item.subtotal)}
+            bold={item.is_free}
+          />
           {item.condition_notes ? <p className="text-[0.9em]">{L('notes')}: {item.condition_notes}</p> : null}
         </div>
       ))}

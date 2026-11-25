@@ -153,9 +153,10 @@ function AdminDashboard() {
   const s = summary.data
 
   const types = services.data?.service_types || []
-  const normal = types.find((x) => x.service_type === 'NORMAL')
-  const express = types.find((x) => x.service_type === 'EXPRESS')
-  const totalQty = (normal?.quantity || 0) + (express?.quantity || 0)
+  const TYPES = ['NORMAL', 'EXPRESS', 'CUSTOM']
+  const byType = Object.fromEntries(TYPES.map((k) => [k, types.find((x) => x.service_type === k) || { quantity: 0, value: 0 }]))
+  const totalQty = TYPES.reduce((sum, k) => sum + (byType[k].quantity || 0), 0)
+  const free = services.data?.free_items
   const pct = (v) => (totalQty ? Math.round((v / totalQty) * 100) : 0)
 
   if (summary.isLoading && !s) return <PageLoader />
@@ -218,30 +219,26 @@ function AdminDashboard() {
 
         <Card>
           <CardHeader title={t('dashboard.normalVsExpress')} />
-          <Legend
-            items={[
-              { label: `${t('serviceType.NORMAL')}: ${pct(normal?.quantity || 0)}%`, color: colors.series[0] },
-              { label: `${t('serviceType.EXPRESS')}: ${pct(express?.quantity || 0)}%`, color: colors.series[1] },
-            ]}
-          />
+          <Legend items={TYPES.map((k, i) => ({ label: `${t(`serviceType.${k}`)}: ${pct(byType[k].quantity || 0)}%`, color: colors.series[i] }))} />
           <ShareDonut
-            data={[
-              { name: t('serviceType.NORMAL'), value: normal?.quantity || 0 },
-              { name: t('serviceType.EXPRESS'), value: express?.quantity || 0 },
-            ]}
+            data={TYPES.map((k) => ({ name: t(`serviceType.${k}`), value: byType[k].quantity || 0 }))}
             centerValue={f.number(totalQty)}
             centerLabel={t('dashboard.itemsProcessed')}
           />
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-xl bg-surface-strong p-2.5">
-              <p className="text-muted">{t('serviceType.NORMAL')}</p>
-              <p className="tabular font-semibold">{f.money(normal?.value)}</p>
-            </div>
-            <div className="rounded-xl bg-surface-strong p-2.5">
-              <p className="text-muted">{t('serviceType.EXPRESS')}</p>
-              <p className="tabular font-semibold">{f.money(express?.value)}</p>
-            </div>
+          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+            {TYPES.map((k) => (
+              <div key={k} className="min-w-0 rounded-xl bg-surface-strong p-2.5">
+                <p className="truncate text-muted">{t(`serviceType.${k}`)}</p>
+                <p className="tabular truncate font-semibold">{f.money(byType[k].value, { short: true })}</p>
+              </div>
+            ))}
           </div>
+          {free?.quantity ? (
+            <p className="mt-2 rounded-xl bg-success/10 p-2.5 text-xs">
+              <span className="font-semibold text-success">{t('analytics.freeItems')}</span>{' '}
+              {t('analytics.freeItemsHint', { count: free.quantity, amount: f.money(free.value_given) })}
+            </p>
+          ) : null}
         </Card>
 
         <Card className="md:col-span-2">

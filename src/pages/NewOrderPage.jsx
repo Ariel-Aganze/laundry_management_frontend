@@ -41,8 +41,19 @@ const newLine = (item, category) => ({
   quantity: 1,
   condition_notes: '',
   showNotes: false,
+  custom_price: '',
+  is_free: false,
 })
-const unitPrice = (line) => (line.service_type === 'EXPRESS' ? line.express_price : line.normal_price)
+/** Unit price shown for a line: catalog price, or the price typed in for Custom. */
+const unitPrice = (line) =>
+  line.service_type === 'CUSTOM'
+    ? Number(line.custom_price || 0)
+    : line.service_type === 'EXPRESS'
+      ? line.express_price
+      : line.normal_price
+/** What the line adds to the order total (0 when offered for free). */
+const lineTotal = (line) => (line.is_free ? 0 : unitPrice(line) * line.quantity)
+const SERVICE_TYPES = ['NORMAL', 'EXPRESS', 'CUSTOM']
 
 function Section({ number, title, children, action }) {
   return (
@@ -169,7 +180,7 @@ function ItemsSection({ lines, setLines }) {
 
   const add = (item) => {
     setLines((current) => {
-      const existing = current.find((l) => l.service_item === item.id && l.service_type === 'NORMAL' && !l.condition_notes)
+      const existing = current.find((l) => l.service_item === item.id && l.service_type === 'NORMAL' && !l.condition_notes && !l.is_free)
       if (existing) return current.map((l) => (l === existing ? { ...l, quantity: l.quantity + 1 } : l))
       return [...current, newLine(item, activeCategory)]
     })
@@ -222,8 +233,8 @@ function ItemsSection({ lines, setLines }) {
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex rounded-full border border-line bg-surface p-0.5">
-                  {['NORMAL', 'EXPRESS'].map((type) => (
-                    <button key={type} type="button" onClick={() => update(line.key, { service_type: type })} className={cn('h-8 rounded-full px-3 text-xs font-bold', line.service_type === type ? 'bg-primary text-primary-ink' : 'text-muted')}>
+                  {SERVICE_TYPES.map((type) => (
+                    <button key={type} type="button" onClick={() => update(line.key, { service_type: type })} className={cn('h-8 rounded-full px-2.5 text-xs font-bold sm:px-3', line.service_type === type ? 'bg-primary text-primary-ink' : 'text-muted')}>
                       {t(`serviceType.${type}`)}
                     </button>
                   ))}
@@ -249,8 +260,35 @@ function ItemsSection({ lines, setLines }) {
                   <p className="tabular text-xs text-muted">
                     {line.quantity} × {f.money(unitPrice(line))}
                   </p>
-                  <p className="tabular font-bold">{f.money(unitPrice(line) * line.quantity)}</p>
+                  {line.is_free ? (
+                    <p className="font-bold text-success">
+                      <span className="tabular mr-1.5 text-xs font-medium text-muted line-through">{f.money(unitPrice(line) * line.quantity)}</span>
+                      {t('orders.free')}
+                    </p>
+                  ) : (
+                    <p className="tabular font-bold">{f.money(lineTotal(line))}</p>
+                  )}
                 </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                {line.service_type === 'CUSTOM' ? (
+                  <Input
+                    className="w-full sm:w-56"
+                    label={t('newOrder.customPrice')}
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    value={line.custom_price}
+                    onChange={(e) => update(line.key, { custom_price: e.target.value })}
+                    error={line.custom_price === '' ? t('newOrder.customPriceHint') : null}
+                    autoFocus
+                  />
+                ) : <span />}
+                <label className={cn('flex cursor-pointer select-none items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition', line.is_free ? 'border-success bg-success/12 text-success' : 'border-line bg-surface')}>
+                  <input type="checkbox" className="size-4 accent-[var(--success)]" checked={line.is_free} onChange={(e) => update(line.key, { is_free: e.target.checked })} />
+                  {t('newOrder.freeOfCharge')}
+                </label>
               </div>
               {line.showNotes || line.condition_notes ? (
                 <Textarea className="mt-3" rows={2} placeholder={t('newOrder.conditionPlaceholder')} value={line.condition_notes} onChange={(e) => update(line.key, { condition_notes: e.target.value })} />
@@ -342,7 +380,7 @@ export default function NewOrderPage() {
   const [review, setReview] = useState(false)
   const [created, setCreated] = useState(null)
 
-  const total = useMemo(() => lines.reduce((s, l) => s + unitPrice(l) * l.quantity, 0), [lines])
+  const total = useMemo(() => lines.reduce((s, l) => s + lineTotal(l), 0), [lines])
   const quantity = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines])
   const paid = Math.min(Number(payment.amount || 0), total)
   const balance = Math.max(total - Number(payment.amount || 0), 0)
@@ -350,6 +388,7 @@ export default function NewOrderPage() {
   const problems = []
   if (!customer && !(newCustomer?.full_name?.trim() && newCustomer?.phone_number?.trim().length > 5)) problems.push(t('newOrder.needCustomer'))
   if (!lines.length) problems.push(t('newOrder.needItems'))
+  if (lines.some((l) => l.service_type === 'CUSTOM' && (l.custom_price === '' || Number(l.custom_price) < 0))) problems.push(t('newOrder.needCustomPrice'))
   if (pickup < dropOff) problems.push(t('errors.codes.pickup_before_dropoff'))
   if (Number(payment.amount || 0) > total) problems.push(t('errors.codes.payment_exceeds_balance'))
   if (payment.payment_method === 'OTHER' && Number(payment.amount) > 0 && !payment.method_other.trim()) problems.push(t('errors.codes.method_other_required'))
@@ -379,6 +418,8 @@ export default function NewOrderPage() {
           service_type: l.service_type,
           quantity: l.quantity,
           condition_notes: l.condition_notes,
+          is_free: l.is_free,
+          ...(l.service_type === 'CUSTOM' ? { custom_price: l.custom_price } : {}),
         })),
         payment: Number(payment.amount) > 0 ? payment : null,
       }),
@@ -513,10 +554,10 @@ export default function NewOrderPage() {
             {lines.map((l) => (
               <div key={l.key} className="flex justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="font-medium">{l.quantity} × {l.name} <span className="text-xs text-muted">({t(`serviceType.${l.service_type}`)})</span></p>
+                  <p className="font-medium">{l.quantity} × {l.name} <span className="text-xs text-muted">({t(`serviceType.${l.service_type}`)}{l.service_type === 'CUSTOM' ? ` · ${f.money(unitPrice(l))}` : ''})</span></p>
                   {l.condition_notes ? <p className="text-xs text-muted">{l.condition_notes}</p> : null}
                 </div>
-                <p className="tabular shrink-0 font-semibold">{f.money(unitPrice(l) * l.quantity)}</p>
+                <p className={cn('tabular shrink-0 font-semibold', l.is_free && 'text-success')}>{l.is_free ? t('orders.free') : f.money(lineTotal(l))}</p>
               </div>
             ))}
           </div>
@@ -560,8 +601,8 @@ export default function NewOrderPage() {
           <div className="mb-3 max-h-64 divide-y divide-line overflow-y-auto scroll-thin">
             {lines.map((l) => (
               <div key={l.key} className="flex justify-between gap-3 py-2 text-sm">
-                <span className="min-w-0 truncate">{l.quantity} × {l.name}{l.service_type === 'EXPRESS' ? ' ⚡' : ''}</span>
-                <span className="tabular shrink-0 font-medium">{f.money(unitPrice(l) * l.quantity)}</span>
+                <span className="min-w-0 truncate">{l.quantity} × {l.name}{l.service_type === 'EXPRESS' ? ' ⚡' : ''}{l.service_type === 'CUSTOM' ? ' ✎' : ''}</span>
+                <span className={cn('tabular shrink-0 font-medium', l.is_free && 'text-success')}>{l.is_free ? t('orders.free') : f.money(lineTotal(l))}</span>
               </div>
             ))}
           </div>

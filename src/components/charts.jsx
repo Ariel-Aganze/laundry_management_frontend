@@ -15,14 +15,14 @@ import {
 import { useTheme } from '../context/ThemeContext'
 
 /**
- * Chart palette - two categorical slots in fixed order, validated
+ * Chart palette - three categorical slots in fixed order (blue, olive, magenta), validated
  * (lightness band, CVD separation) separately for each surface.
  */
 export function useChartColors() {
   const { isDark } = useTheme()
   return isDark
-    ? { series: ['#3d95ea', '#879d10'], grid: 'rgba(255,255,255,0.07)', axis: '#9aa1ab', ink: '#eceef1', surface: '#1a1d22', cursor: 'rgba(255,255,255,0.25)' }
-    : { series: ['#2f86de', '#93ab12'], grid: 'rgba(17,19,22,0.07)', axis: '#6b717b', ink: '#15171a', surface: '#f4f5f7', cursor: 'rgba(17,19,22,0.25)' }
+    ? { series: ['#3d95ea', '#879d10', '#d55181'], grid: 'rgba(255,255,255,0.07)', axis: '#9aa1ab', ink: '#eceef1', surface: '#1a1d22', cursor: 'rgba(255,255,255,0.25)' }
+    : { series: ['#2f86de', '#93ab12', '#c43b77'], grid: 'rgba(17,19,22,0.07)', axis: '#6b717b', ink: '#15171a', surface: '#f4f5f7', cursor: 'rgba(17,19,22,0.25)' }
 }
 
 function TooltipBox({ active, payload, label, labelFormatter, valueFormatter }) {

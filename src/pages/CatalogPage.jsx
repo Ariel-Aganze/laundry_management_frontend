@@ -183,10 +183,10 @@ export default function CatalogPage() {
                   </div>
                   <div className="overflow-hidden rounded-2xl border border-line">
                     <div className="hidden grid-cols-[1fr_130px_130px_100px_90px] gap-3 bg-surface-strong px-4 py-2.5 text-xs font-medium text-muted md:grid">
-                      <span>{t('common.name')}</span><span className="text-right">{t('serviceType.NORMAL')}</span><span className="text-right">{t('serviceType.EXPRESS')}</span><span>{t('orders.status')}</span><span />
+                      <span>{t('common.name')}</span><span className="text-right">{t('serviceType.NORMAL')}</span><span className="text-right">{t('serviceType.EXPRESS')}</span><span className="text-right">{t('catalog.customColumn')}</span><span>{t('orders.status')}</span><span />
                     </div>
                     {group.items.map((s) => (
-                      <div key={s.id} className={cn('grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 border-t border-line px-4 py-3 first:border-t-0 md:grid-cols-[1fr_130px_130px_100px_90px] md:first:border-t', !s.is_active && 'opacity-60')}>
+                      <div key={s.id} className={cn('grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 border-t border-line px-4 py-3 first:border-t-0 md:grid-cols-[1fr_120px_120px_120px_100px_90px] md:first:border-t', !s.is_active && 'opacity-60')}>
                         <div className="min-w-0">
                           <p className="truncate font-semibold">{s.name}</p>
                           {s.description ? <p className="truncate text-xs text-muted">{s.description}</p> : null}
@@ -194,6 +194,7 @@ export default function CatalogPage() {
                         </div>
                         <span className="tabular hidden text-right md:block">{f.money(s.normal_price)}</span>
                         <span className="tabular hidden text-right font-semibold md:block">{f.money(s.express_price)}</span>
+                        <span className="hidden text-right text-xs text-muted md:block">{t('catalog.customAtOrder')}</span>
                         <span className="hidden md:block">{s.is_active ? <Badge tone="success">{t('catalog.active')}</Badge> : <Badge tone="danger">{t('catalog.inactive')}</Badge>}</span>
                         <div className="text-right">
                           <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditService(s)}><span className="hidden lg:inline">{t('common.edit')}</span></Button>
